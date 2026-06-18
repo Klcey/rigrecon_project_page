@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="RigRecon: Efficient Rig-Aware Street Reconstruction via Dual-Path Spatio-Temporal Interaction">
+  <title>RigRecon</title>
+
+  <!-- Three.js ES-module importmap (must precede any type="module" script) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three":        "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+      "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --c-title:   #007bd9;
+      --c-accent:  #77c4ff;
+      --c-hover:   #bee3ff;
+      --c-tint:    #f1f9ff;
+      --c-text:    #374151;
+      --c-text-2:  #6b7280;
+      --c-text-3:  #9ca3af;
+
+      /* ── Section spacing & title sizing (edit here to change all at once) ── */
+      --sec-pad:         72px;   /* vertical padding for every section */
+      --title-size:      28px;   /* .section-heading font size          */
+      --title-below:     40px;   /* gap below heading, before content   */
+      --big-title-size:  40px;   /* .comp-section-title font size       */
+      --big-title-below: 56px;   /* gap below comp-section-title        */
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #fff;
+      color: var(--c-text);
+      line-height: 1.6;
+    }
+
+    a { text-decoration: none; }
+
+    /* ── Navbar ── */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,0.07);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+    }
+
+    .nav-brand {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, var(--c-title), var(--c-accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links { display: flex; gap: 28px; }
+
+    .nav-links a {
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--c-text-2);
+      transition: color 0.2s, text-decoration-color 0.2s;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      text-underline-offset: 3px;
+    }
+
+    .nav-links a:hover {
+      color: var(--c-title);
+      text-decoration-color: var(--c-accent);
+    }
+
+    /* ── Banner ── */
+    .banner {
+      background: #fff;
+      padding: 64px 24px 76px;
+      text-align: center;
+    }
+
+    .banner-inner { max-width: 960px; margin: 0 auto; }
+
+    .banner-title {
+      /* sized so the first half-line fits within 960 px container */
+      font-size: clamp(1.7rem, 3.2vw, 2.2rem);
+      font-weight: 800;
+      color: var(--c-text);
+      line-height: 1.68;
+      margin-bottom: 28px;
+      letter-spacing: -0.015em;
+    }
+
+    /* gradient blue on "RigRecon", no underline */
+    .banner-title .highlight {
+      background: linear-gradient(90deg, var(--c-title) 0%, #3baee8 55%, var(--c-accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .banner-authors  { font-size: 16px; color: var(--c-text-2); margin-bottom: 6px; }
+    .banner-affiliation { font-size: 14px; color: var(--c-text-3); margin-bottom: 40px; }
+
+    .banner-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 20px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--c-text-2);
+      border: 1px solid rgba(0,0,0,0.12);
+      background: #fff;
+      transition: all 0.2s;
+      cursor: default;
+    }
+
+    a.btn-link { cursor: pointer; }
+
+    a.btn-link:hover {
+      border-color: var(--c-accent);
+      background: var(--c-hover);
+      color: var(--c-text);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 10px rgba(159,217,249,0.2);
+    }
+
+    /* primary = the one active link; uses tint at rest, hover shade on hover */
+    .btn-link.primary {
+      background: var(--c-tint);
+      border-color: var(--c-accent);
+      color: var(--c-text);
+      font-weight: 600;
+    }
+
+    a.btn-link.primary:hover {
+      background: var(--c-hover);
+      border-color: var(--c-accent);
+    }
+
+    .btn-link.muted { opacity: 0.4; }
+
+    /* ── Sections ── */
+    .section     { padding: var(--sec-pad) 24px; }
+    .section-alt { background: var(--c-tint); }
+    .container   { max-width: 900px; margin: 0 auto; }
+
+    /* Card section: white page bg, content sits in a blue rounded card */
+    .section-card { background: #fff; padding: var(--sec-pad) 24px; }
+
+    .card-body {
+      max-width: 1060px;   /* wider for fewer lines, clearer reading */
+      margin: 0 auto;
+      background: var(--c-tint);
+      border: 1.5px solid rgba(119, 196, 255, 0.45);
+      border-radius: 16px;
+      padding: 44px 56px;
+      box-shadow: 0 4px 24px rgba(119, 196, 255, 0.10);
+    }
+
+    /* Card heading: centred, hollow diamonds on each side, no extending lines.
+       Using Unicode ◇ for reliable cross-browser hollow diamond rendering. */
+    .card-heading {
+      text-align: center;
+      font-size: var(--title-size);
+      font-weight: 800;
+      color: var(--c-title);
+      margin: 0 0 var(--title-below);
+      letter-spacing: -0.01em;
+    }
+
+    .card-heading::before { content: '◇'; color: var(--c-accent); margin-right: 14px; font-size: 0.72em; vertical-align: 0.06em; }
+    .card-heading::after  { content: '◇'; color: var(--c-accent); margin-left:  14px; font-size: 0.72em; vertical-align: 0.06em; }
+
+    /* ── Demo video ── */
+    .demo-video {
+      width: 100%;
+      display: block;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.10);
+    }
+
+    /* ── Citation ── */
+    .citation-box { position: relative; }
+
+    .citation-pre {
+      display: block;
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(119, 196, 255, 0.38);
+      border-radius: 10px;
+      padding: 22px 108px 22px 28px;  /* right gap reserves space for copy btn */
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.85;
+      color: var(--c-text);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .citation-copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(119,196,255,0.18);
+      border: 1px solid rgba(119,196,255,0.45);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      color: var(--c-title);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .citation-copy-btn:hover { background: rgba(119,196,255,0.32); border-color: var(--c-accent); }
+    .citation-copy-btn.copied { background: rgba(34,197,94,0.14); border-color: rgba(34,197,94,0.45); color: #15803d; }
+
+    /* ── Shared decorative section title style (normal / full-width sections) ── */
+    .section-heading,
+    .comp-section-title {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-weight: 800;
+      color: var(--c-title);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+
+    /* unified size for all normal section titles */
+    .section-heading,
+    .comp-section-title { font-size: var(--title-size); margin: 0 0 var(--title-below); }
+
+    /* extending lines */
+    .section-heading::before,  .section-heading::after,
+    .comp-section-title::before, .comp-section-title::after {
+      content: '';
+      flex: 1;
+      height: 2px;
+      border-radius: 1px;
+    }
+
+    .section-heading::before,  .comp-section-title::before {
+      background: linear-gradient(to right, transparent, var(--c-accent));
+    }
+
+    .section-heading::after,  .comp-section-title::after {
+      background: linear-gradient(to left, transparent, var(--c-accent));
+    }
+
+    /* diamond ornaments */
+    .section-heading span::before,   .section-heading span::after,
+    .comp-section-title span::before, .comp-section-title span::after {
+      content: '';
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      background: var(--c-accent);
+      transform: rotate(45deg);
+      vertical-align: middle;
+      position: relative;
+      top: -1px;
+      opacity: 0.85;
+    }
+
+    .section-heading span::before,   .comp-section-title span::before { margin-right: 16px; }
+    .section-heading span::after,    .comp-section-title span::after  { margin-left:  16px; }
+
+    /* ── Abstract ── */
+    .abstract-text {
+      font-size: 17px;
+      line-height: 1.92;
+      color: #5b6069;
+      text-align: justify;
+    }
+
+    /* ── Figure ── */
+    .paper-fig {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05), 0 8px 28px rgba(0,0,0,0.07);
+      display: block;
+    }
+
+    .fig-placeholder {
+      width: 100%;
+      aspect-ratio: 16/7;
+      background: #fff;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--c-accent);
+      font-size: 14px;
+      gap: 12px;
+      border: 1.5px dashed rgba(159,217,249,0.55);
+    }
+
+    .fig-placeholder i { font-size: 44px; opacity: 0.7; }
+
+    .fig-caption {
+      margin-top: 18px;
+      font-size: 13.5px;
+      color: var(--c-text-2);
+      line-height: 1.65;
+      text-align: center;
+    }
+
+    /* ── Footer ── */
+    footer {
+      background: #f5f7f9;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      color: var(--c-text-3);
+      text-align: center;
+      padding: 28px 24px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    footer a {
+      color: var(--c-text-2);
+      text-decoration: underline;
+      text-decoration-color: rgba(159,217,249,0.55);
+      text-underline-offset: 2px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .nav-links { display: none; }
+      .banner { padding: 64px 16px 52px; }
+      .section { padding: 52px 16px; }
+      .banner-title { font-size: 1.45rem; }
+    }
+
+    /* ── Interactive Examples section ── */
+    .ex-viewer-wrap {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+      height: 480px;
+      margin-bottom: 12px;
+    }
+
+    .ex-hint {
+      position: absolute;
+      bottom: 10px;
+      right: 14px;
+      font-size: 11px;
+      color: rgba(0,0,0,0.25);
+      pointer-events: none;
+    }
+
+    /* ── Comparisons section ── */
+    .container-wide { max-width: 1140px; margin: 0 auto; }
+
+    /* Scene selector: 6 in one row, compact thumbnails */
+    .comp-scene-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .comp-scene-item {
+      cursor: pointer;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+    }
+
+    .comp-scene-item:hover { border-color: var(--c-accent); }
+
+    .comp-scene-item.active {
+      border-color: var(--c-accent);
+      box-shadow: 0 0 0 3px rgba(159,217,249,0.28), 0 4px 16px rgba(0,0,0,0.06);
+    }
+
+    .comp-scene-thumb {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      display: block;
+    }
+
+    .comp-scene-ph {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: linear-gradient(135deg, #e5e7eb, #f3f4f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--c-text-3);
+      font-size: 20px;
+    }
+
+    .comp-scene-label {
+      padding: 6px 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--c-text-2);
+      text-align: center;
+    }
+
+    .comp-hint {
+      text-align: center;
+      color: var(--c-text-3);
+      font-size: 13px;
+      padding: 16px 0 4px;
+    }
+
+    .comp-viewer-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .comp-viewer-wrap {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+      height: 360px;
+    }
+
+    .comp-method-label {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 5;
+      background: #359cebc5;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 4px 10px;
+      border-radius: 6px;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+
+    .comp-canvas { display: block; width: 100%; height: 100%; }
+
+    .comp-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #fff;
+      color: var(--c-text-3);
+      font-size: 12px;
+      border-radius: 12px;
+    }
+
+    .comp-toast {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30,30,30,0.80);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 20px;
+      pointer-events: none;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.18s;
+      z-index: 10;
+    }
+
+    .comp-toast.show { opacity: 1; }
+
+    .comp-key-hint {
+      text-align: center;
+      color: var(--c-text-3);
+      font-size: 11.5px;
+      padding: 10px 0 0;
+    }
+
+    /* spinner (also used in comparison loaders) */
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(0,0,0,0.07);
+      border-top-color: var(--c-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .comp-viewer-wrap.debug-active { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+    /* debug bar */
+    .comp-debug-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: rgba(20,20,30,0.88);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      backdrop-filter: blur(8px);
+    }
+
+    .comp-debug-label {
+      color: #f87171;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .comp-debug-btn {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.65);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .comp-debug-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+    .comp-debug-btn.active {
+      background: rgba(119,196,255,0.30);
+      border-color: var(--c-accent);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .comp-debug-hint {
+      color: rgba(255,255,255,0.30);
+      font-size: 11px;
+      margin-left: 6px;
+    }
+
+    @media (max-width: 800px) {
+      .comp-scene-grid  { grid-template-columns: repeat(3, 1fr); }
+      .comp-viewer-row  { grid-template-columns: 1fr; }
+      .comp-viewer-wrap { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <span class="nav-brand">RigRecon</span>
+    <div class="nav-links">
+      <a href="#abstract">Abstract</a>
+      <a href="#examples">Examples</a>
+      <a href="#comparisons">Comparisons</a>
+      <a href="#citation">Citation</a>
+      <a href="gallery.html">Gallery</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Banner -->
+<section class="banner">
+  <div class="banner-inner">
+    <h1 class="banner-title">
+      <span class="highlight">RigRecon</span>: Efficient Rig-Aware Street Reconstruction<br>
+      via Dual-Path Spatio-Temporal Interaction
+    </h1>
+    <p class="banner-authors">Anonymous Authors</p>
+    <p class="banner-affiliation">Anonymous Affiliation</p>
+    <div class="banner-links">
+      <span class="btn-link muted">
+        <i class="fas fa-graduation-cap"></i> arXiv
+      </span>
+      <span class="btn-link muted">
+        <i class="fab fa-github"></i> Code
+      </span>
+      <a href="gallery.html" class="btn-link primary">
+        <i class="fas fa-images"></i> Gallery
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Demo Video  ─ white bg, follows banner -->
+<section class="section">
+  <div style="max-width:1060px; margin:0 auto;">
+    <video class="demo-video" controls muted preload="metadata">
+      <source src="assets/demo.mp4" type="video/mp4">
+    </video>
+  </div>
+</section>
+
+<!-- Abstract + Figure  ─ card section, white page bg, blue rounded card -->
+<section id="abstract" class="section-card">
+  <div class="card-body">
+    <h2 class="card-heading">Abstract</h2>
+    <p class="abstract-text">
+      Reconstructing multi-camera videos is a fundamental task in autonomous driving. However,
+      recent learned methods either rely on costly attention-based networks for global geometry
+      modeling or require complex post-hoc alignment for chunked predictions, limiting their
+      scalability to long multi-view rig sequences. We propose RigRecon, a generalized rig-aware
+      reconstruction framework that enables efficient cross-view interaction in a low-resolution
+      space while asynchronously decoding high-resolution depth maps in a frame-wise manner.
+      Input images are first down-sampled and processed by a transformer backbone to capture
+      coarse global structure, which is then provided to a decoder to reconstruct frame-wise
+      high-resolution depth maps. By fully leveraging calibration and low-resolution feature
+      interaction, RigRecon achieves consistent-scale geometry and accurate pose estimation with
+      significantly reduced memory cost. It achieves state-of-the-art performance on 3D
+      reconstruction, depth estimation, and camera pose estimation, and can efficiently process
+      videos with over 1000 images in a single feedforward pass.
+    </p>
+    <!-- overview figure sits at the bottom of the card -->
+    <img
+      src="pipeline.png"
+      alt="RigRecon: Overview of the framework"
+      class="paper-fig"
+      style="margin-top: 36px;"
+      onerror="this.style.display='none'; document.getElementById('figPlaceholder').style.display='flex';"
+    >
+    <div id="figPlaceholder" class="fig-placeholder" style="display:none; margin-top:36px;">
+      <i class="fas fa-image"></i>
+      <span>pipeline.png</span>
+    </div>
+    <!-- <p class="fig-caption">
+      <strong>Figure 1.</strong> Overview of RigRecon. Our framework achieves consistent-scale
+      multi-camera street reconstruction through efficient dual-path spatio-temporal interaction,
+      enabling scalable processing of long multi-view rig sequences.
+    </p> -->
+  </div>
+</section>
+
+<!-- Interactive Examples  ─ blue bg, alternates with white card-section above -->
+<section id="examples" class="section section-alt">
+
+  <h2 class="section-heading"><span>Interactive Examples</span></h2>
+
+  <div class="container-wide">
+
+    <p id="exHint" class="comp-hint">Select a scene below</p>
+
+    <div id="exViewer" class="ex-viewer-wrap" style="display:none;">
+      <canvas id="exCanvas" class="comp-canvas"></canvas>
+      <div id="exLoading" class="comp-loading">
+        <div class="spinner"></div><span>Loading…</span>
+      </div>
+      <div id="exToast" class="comp-toast"></div>
+      <div class="ex-hint">Drag to rotate · Scroll to zoom · Q/E to roll</div>
+    </div>
+
+    <p id="exKeyHint" class="comp-key-hint" style="display:none;">
+
+    </p>
+
+    <!-- Scene selector -->
+    <div id="exSceneGrid" class="comp-scene-grid"></div>
+
+  </div>
+</section>
+
+<!-- Comparisons -->
+<section id="comparisons" class="section">
+
+  <!-- Title is outside container-wide so the decorative lines reach the section edges -->
+  <h2 class="comp-section-title"><span>Comparisons</span></h2>
+
+  <div class="container-wide">
+
+    <!-- Debug bar: hidden by default, toggle with ` key, 1/2/3 to select method -->
+    <div id="compDebugBar" class="comp-debug-bar" style="display:none;">
+      <span class="comp-debug-label">DEBUG</span>
+      <button id="dbgBtn0" class="comp-debug-btn active">1 · Ours</button>
+      <button id="dbgBtn1" class="comp-debug-btn">2 · DVGT</button>
+      <button id="dbgBtn2" class="comp-debug-btn">3 · DA3-Streaming</button>
+      <span class="comp-debug-hint">+/- frustum &nbsp;·&nbsp; S save &nbsp;·&nbsp; Shift+S reset</span>
+    </div>
+
+    <!-- Three viewers appear first -->
+    <p id="compHint" class="comp-hint">Select a scene below to compare methods</p>
+
+    <div id="compViewers" class="comp-viewer-row" style="display:none;">
+      <div class="comp-viewer-wrap">
+        <div class="comp-method-label">Ours</div>
+        <canvas id="compCanvas0" class="comp-canvas"></canvas>
+        <div id="compLoading0" class="comp-loading">
+          <div class="spinner"></div><span>Loading…</span>
+        </div>
+        <div id="compToast0" class="comp-toast"></div>
+      </div>
+      <div class="comp-viewer-wrap">
+        <div class="comp-method-label">DVGT</div>
+        <canvas id="compCanvas1" class="comp-canvas"></canvas>
+        <div id="compLoading1" class="comp-loading">
+          <div class="spinner"></div><span>Loading…</span>
+        </div>
+      </div>
+      <div class="comp-viewer-wrap">
+        <div class="comp-method-label">DA3-Streaming</div>
+        <canvas id="compCanvas2" class="comp-canvas"></canvas>
+        <div id="compLoading2" class="comp-loading">
+          <div class="spinner"></div><span>Loading…</span>
+        </div>
+      </div>
+    </div>
+
+    <p id="compKeyHint" class="comp-key-hint" style="display:none;">
+      Drag to rotate · Scroll to zoom · Q/E to roll
+    </p>
+    </p>
+
+    <!-- Scene selector: 6 items in one row -->
+    <div id="compSceneGrid" class="comp-scene-grid"></div>
+
+  </div>
+</section>
+
+<!-- Citation  ─ card section, DA3-style with copy button -->
+<section id="citation" class="section-card">
+  <div class="card-body">
+    <h2 class="card-heading">Citation</h2>
+    <div class="citation-box">
+      <pre class="citation-pre">@article{
+}</pre>
+      <button class="citation-copy-btn" id="citeCopyBtn" onclick="copyCitation()">
+        <i class="fas fa-copy"></i> Copy
+      </button>
+    </div>
+  </div>
+</section>
+
+<script>
+function copyCitation() {
+  const text = document.querySelector('.citation-pre').textContent.trim();
+  const btn  = document.getElementById('citeCopyBtn');
+  const orig = btn.innerHTML;
+
+  const done = () => {
+    btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2200);
+  };
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, cb) {
+  const ta = Object.assign(document.createElement('textarea'), {
+    value: text, style: 'position:fixed;opacity:0'
+  });
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch {}
+  document.body.removeChild(ta);
+}
+</script>
+
+<!-- Footer -->
+<footer>
+  <p>
+    © 2026 RigRecon.
+  </p>
+</footer>
+
+<script type="module">
+// ── Three.js is lazy-loaded on first scene selection to avoid blocking page load ──
+let THREE, PLYLoader, OrbitControls, LineSegments2, LineSegmentsGeometry, LineMaterial;
+
+async function loadThreeJS() {
+  if (THREE) return;
+  const m = await Promise.all([
+    import('three'),
+    import('three/addons/loaders/PLYLoader.js'),
+    import('three/addons/controls/OrbitControls.js'),
+    import('three/addons/lines/LineSegments2.js'),
+    import('three/addons/lines/LineSegmentsGeometry.js'),
+    import('three/addons/lines/LineMaterial.js'),
+  ]);
+  THREE = m[0]; PLYLoader = m[1].PLYLoader; OrbitControls = m[2].OrbitControls;
+  LineSegments2 = m[3].LineSegments2; LineSegmentsGeometry = m[4].LineSegmentsGeometry;
+  LineMaterial  = m[5].LineMaterial;
+}
+
+// ── Config ────────────────────────────────────────────────────────────────────
+const COMP_ROOT    = 'assets/comparisons/';
+const COMP_METHODS = ['ours', 'dvgt', 'da3_streaming'];
+const N            = 3;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let renderers   = Array(N).fill(null);
+let scenes      = Array(N).fill(null);
+let cameras     = Array(N).fill(null);
+let ctrls       = Array(N).fill(null);
+let clouds      = Array(N).fill(null);
+let frustumGrps = Array(N).fill(null);
+let metas       = Array(N).fill(null);
+let savedCams   = Array(N).fill(null);   // per-viewer saved camera
+let frusSizes   = [0.4, 0.4, 0.4];      // per-viewer frustum depth
+let animId      = null;
+let dataset     = null;
+
+// debug state (invisible to end users, toggle with `)
+let debugMode    = false;
+let activeViewer = 0;   // which viewer +/- and S currently act on
+
+// per-method, per-scene localStorage key
+const lsKey = (ds, method) => `rigrecon_comp_cam_${ds}_${method}`;
+
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function showToast(msg, ms = 1800) {
+  const t = $('compToast0');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tmr);
+  t._tmr = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+// ── Scene index ───────────────────────────────────────────────────────────────
+async function loadIndex() {
+  try {
+    const r = await fetch(COMP_ROOT + 'index.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error();
+    return (await r.json()).scenes ?? [];
+  } catch { return []; }
+}
+
+function buildGrid(sceneList) {
+  const grid = $('compSceneGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  if (!sceneList.length) {
+    grid.innerHTML = '<p style="color:var(--c-text-3);font-size:13px;grid-column:1/-1;text-align:center;padding:24px 0">' +
+      'No comparison data yet. Run <code>prepare_comparisons.py</code>.</p>';
+    return;
+  }
+
+  sceneList.forEach((ds, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'comp-scene-item';
+    wrap.dataset.ds = ds;
+
+    const img = document.createElement('img');
+    img.className = 'comp-scene-thumb';
+    img.src = COMP_ROOT + ds + '/thumbnail.jpg';
+    img.alt = ds;
+    img.loading = 'lazy';
+    img.onerror = () => {
+      img.replaceWith(Object.assign(document.createElement('div'), {
+        className: 'comp-scene-ph',
+        innerHTML: '<i class="fas fa-layer-group"></i>',
+      }));
+    };
+
+    const lbl = document.createElement('div');
+    lbl.className = 'comp-scene-label';
+    lbl.textContent = `Scene ${i + 1}`;
+
+    wrap.append(img, lbl);
+    wrap.addEventListener('click', () => selectScene(ds, wrap));
+    grid.appendChild(wrap);
+  });
+
+  if (sceneList.length) selectScene(sceneList[0], grid.querySelector('.comp-scene-item'));
+}
+
+// ── Scene selection ───────────────────────────────────────────────────────────
+async function selectScene(ds, itemEl) {
+  if (ds === dataset) return;
+  dataset = ds;
+
+  document.querySelectorAll('.comp-scene-item').forEach(e => e.classList.remove('active'));
+  itemEl?.classList.add('active');
+
+  const viewers = $('compViewers');
+  const hint    = $('compHint');
+  const keyHint = $('compKeyHint');
+  if (viewers) viewers.style.display = '';
+  if (hint)    hint.style.display    = 'none';
+  if (keyHint) keyHint.style.display = '';
+
+  for (let i = 0; i < N; i++) {
+    const l = $(`compLoading${i}`);
+    if (l) { l.innerHTML = '<div class="spinner"></div><span>Loading…</span>'; l.style.display = ''; }
+  }
+
+  disposeAll();
+
+  // Lazy-load Three.js only now (on first real user interaction)
+  await loadThreeJS();
+
+  // Fetch all metas in parallel
+  metas = await Promise.all(
+    COMP_METHODS.map(m =>
+      fetch(COMP_ROOT + ds + '/' + m + '/meta.json')
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null)
+    )
+  );
+
+  // Load per-method saved cameras and frustum sizes from localStorage
+  savedCams = Array(N).fill(null);
+  for (let i = 0; i < N; i++) {
+    try {
+      const stored = localStorage.getItem(lsKey(ds, COMP_METHODS[i]));
+      if (stored) {
+        savedCams[i] = JSON.parse(stored);
+        frusSizes[i] = typeof savedCams[i].frustum_size === 'number'
+          ? savedCams[i].frustum_size
+          : (metas[i]?.frustum_size ?? 0.4);
+      } else {
+        frusSizes[i] = metas[i]?.frustum_size ?? 0.4;
+      }
+    } catch {
+      savedCams[i] = null;
+      frusSizes[i] = metas[i]?.frustum_size ?? 0.4;
+    }
+  }
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    for (let i = 0; i < N; i++) {
+      const canvas = $(`compCanvas${i}`);
+      if (!canvas || !metas[i]) {
+        const l = $(`compLoading${i}`);
+        if (l) l.innerHTML = '<span style="font-size:12px;color:var(--c-text-3)">No data</span>';
+        continue;
+      }
+      initViewer(i, canvas);
+    }
+    startLoop();
+
+    for (let i = 0; i < N; i++) {
+      if (!metas[i]) continue;
+      const url = COMP_ROOT + ds + '/' + COMP_METHODS[i] + '/pointcloud.ply';
+      loadPLY(i, url, metas[i]);
+    }
+  }));
+}
+
+// ── Viewer init ───────────────────────────────────────────────────────────────
+function initViewer(i, canvas) {
+  const wrap = canvas.parentElement;
+  const w = wrap.clientWidth || 360, h = wrap.clientHeight || 360;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(w, h, false);
+  renderer.setClearColor(0xffffff);
+
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, w / h, 0.001, 2000);
+  camera.position.set(0, 2.5, 6);
+
+  const ctrl = new OrbitControls(camera, canvas);
+  ctrl.enableDamping     = true;
+  ctrl.dampingFactor     = 0.06;
+  ctrl.rotateSpeed       = -1;
+  ctrl.screenSpacePanning = true;
+  ctrl.minDistance = 0.05;
+  ctrl.maxDistance = 500;
+
+  renderers[i] = renderer;
+  scenes[i]    = scene;
+  cameras[i]   = camera;
+  ctrls[i]     = ctrl;
+}
+
+// ── Animation loop ────────────────────────────────────────────────────────────
+function startLoop() {
+  if (animId !== null) return;    // already running
+  (function loop() {
+    animId = requestAnimationFrame(loop);
+    for (let i = 0; i < N; i++) {
+      ctrls[i]?.update();
+      if (renderers[i] && scenes[i] && cameras[i])
+        renderers[i].render(scenes[i], cameras[i]);
+    }
+    _lockSyncTick(); // [LOCK-SYNC] — remove this line to remove the feature
+  })();
+}
+
+// ── PLY loading ───────────────────────────────────────────────────────────────
+function loadPLY(i, url, meta) {
+  new PLYLoader().load(url, geometry => {
+    geometry.computeBoundingBox();
+
+    let cx, cy, cz, sc;
+    if (meta.pcd_center && meta.pcd_scale) {
+      [cx, cy, cz] = meta.pcd_center; sc = meta.pcd_scale;
+    } else {
+      const ctr = new THREE.Vector3();
+      geometry.boundingBox.getCenter(ctr);
+      [cx, cy, cz] = [ctr.x, ctr.y, ctr.z];
+      const sz = new THREE.Vector3();
+      geometry.boundingBox.getSize(sz);
+      sc = 8.0 / (Math.max(sz.x, sz.y, sz.z) || 1);
+    }
+
+    let material;
+    if (geometry.hasAttribute('color')) {
+      material = new THREE.PointsMaterial({ size: 0.018, vertexColors: true, sizeAttenuation: true });
+    } else {
+      const pos = geometry.attributes.position.array, n = pos.length / 3;
+      const cols = new Float32Array(n * 3);
+      const bb = geometry.boundingBox, zr = bb.max.z - bb.min.z || 1;
+      for (let k = 0; k < n; k++) {
+        const c = new THREE.Color().setHSL(0.65 - (pos[k*3+2] - bb.min.z) / zr * 0.5, 0.9, 0.45);
+        cols[k*3] = c.r; cols[k*3+1] = c.g; cols[k*3+2] = c.b;
+      }
+      geometry.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+      material = new THREE.PointsMaterial({ size: 0.018, vertexColors: true, sizeAttenuation: true });
+    }
+
+    geometry.translate(-cx, -cy, -cz);
+    const pts = new THREE.Points(geometry, material);
+    pts.scale.setScalar(sc);
+
+    if (clouds[i]) { scenes[i]?.remove(clouds[i]); clouds[i].geometry.dispose(); clouds[i].material.dispose(); }
+    clouds[i] = pts;
+    scenes[i]?.add(pts);
+
+    // Apply per-method saved camera (localStorage) or meta default
+    applyCamera(i, savedCams[i] ?? meta.initial_camera);
+    buildFrustums(i);
+
+    const l = $(`compLoading${i}`);
+    if (l) l.style.display = 'none';
+
+  }, undefined, () => {
+    const l = $(`compLoading${i}`);
+    if (l) l.innerHTML = '<span style="font-size:12px;color:var(--c-text-3);text-align:center;padding:10px">No data</span>';
+  });
+}
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+function applyCamera(i, ic) {
+  if (!ic || !cameras[i] || !ctrls[i]) return;
+  const [px, py, pz] = ic.position, [fx, fy, fz] = ic.forward, [ux, uy, uz] = ic.up;
+  const d = ic.look_dist;
+  cameras[i].position.set(px, py, pz);
+  cameras[i].up.set(ux, uy, uz);
+  cameras[i].lookAt(px + fx*d, py + fy*d, pz + fz*d);
+  ctrls[i].target.set(px + fx*d, py + fy*d, pz + fz*d);
+  ctrls[i].object.up.set(ux, uy, uz);
+  ctrls[i].update();
+}
+
+// ── Frustums ──────────────────────────────────────────────────────────────────
+function frustumSegs(c2w, fx, fy, cx, cy, d) {
+  const R = [[c2w[0][0],c2w[0][1],c2w[0][2]],[c2w[1][0],c2w[1][1],c2w[1][2]],[c2w[2][0],c2w[2][1],c2w[2][2]]];
+  const t = [c2w[0][3], c2w[1][3], c2w[2][3]];
+  const xfm = (x,y,z) => [R[0][0]*x+R[0][1]*y+R[0][2]*z+t[0], R[1][0]*x+R[1][1]*y+R[1][2]*z+t[1], R[2][0]*x+R[2][1]*y+R[2][2]*z+t[2]];
+  const hw = cx/fx*d, hh = cy/fy*d;
+  const o = xfm(0,0,0), c = [xfm(-hw,-hh,d),xfm(hw,-hh,d),xfm(hw,hh,d),xfm(-hw,hh,d)];
+  const p = []; for (const v of c) p.push(...o,...v); for (let k=0;k<4;k++) p.push(...c[k],...c[(k+1)%4]); return p;
+}
+
+function buildFrustums(i) {
+  const meta = metas[i];
+  if (!meta?.cam_c2ws || !scenes[i]) return;
+  if (frustumGrps[i]) { frustumGrps[i].traverse(o=>{o.geometry?.dispose();o.material?.dispose();}); scenes[i].remove(frustumGrps[i]); }
+  const F = meta.cam_c2ws.length; if (!F) return;
+  const colA = new THREE.Color(0x6eb7fc);
+  const colB = new THREE.Color(0xff7ec1);
+  const vw = renderers[i]?.domElement.clientWidth || 360, vh = renderers[i]?.domElement.clientHeight || 360;
+  const grp = new THREE.Group();
+  const d = frusSizes[i];   // each viewer uses its own frustum size
+  for (let f = 0; f < F; f++) {
+    const color = colA.clone().lerp(colB, F > 1 ? f/(F-1) : 0);
+    const pos = []; const P = meta.cam_c2ws[f].length;
+    for (let p = 0; p < P; p++) { const [fx,fy,cx,cy] = meta.cam_intrinsics[p]; pos.push(...frustumSegs(meta.cam_c2ws[f][p],fx,fy,cx,cy,d)); }
+    const geo = new LineSegmentsGeometry(); geo.setPositions(pos);
+    grp.add(new LineSegments2(geo, new LineMaterial({ color, linewidth: 2.5, resolution: new THREE.Vector2(vw, vh) })));
+  }
+  frustumGrps[i] = grp; scenes[i].add(grp);
+}
+
+// ── Dispose ───────────────────────────────────────────────────────────────────
+function disposeAll() {
+  cancelAnimationFrame(animId); animId = null;
+  for (let i = 0; i < N; i++) {
+    frustumGrps[i]?.traverse(o=>{o.geometry?.dispose();o.material?.dispose();}); scenes[i]?.remove(frustumGrps[i]); frustumGrps[i]=null;
+    if (clouds[i]) { scenes[i]?.remove(clouds[i]); clouds[i].geometry.dispose(); clouds[i].material.dispose(); clouds[i]=null; }
+    renderers[i]?.dispose(); renderers[i]=null;
+    scenes[i]=null; cameras[i]=null; ctrls[i]=null;
+  }
+  metas = Array(N).fill(null);
+}
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  for (let i = 0; i < N; i++) {
+    if (!renderers[i] || !cameras[i]) continue;
+    const w = renderers[i].domElement.parentElement.clientWidth;
+    const h = renderers[i].domElement.parentElement.clientHeight;
+    renderers[i].setSize(w, h, false);
+    cameras[i].aspect = w / h; cameras[i].updateProjectionMatrix();
+    frustumGrps[i]?.traverse(o => { if (o.material?.isLineMaterial) o.material.resolution.set(w, h); });
+  }
+});
+
+// ── Debug panel ───────────────────────────────────────────────────────────────
+function setActiveViewer(i) {
+  activeViewer = i;
+  updateDebugPanel();
+  showToast(`Editing: ${COMP_METHODS[i]}`);
+}
+
+function updateDebugPanel() {
+  const bar = $('compDebugBar');
+  if (!bar) return;
+  bar.style.display = debugMode ? '' : 'none';
+  for (let i = 0; i < N; i++) {
+    $(`dbgBtn${i}`)?.classList.toggle('active', i === activeViewer);
+    const wrap = $(`compCanvas${i}`)?.parentElement;
+    wrap?.classList.toggle('debug-active', debugMode && i === activeViewer);
+  }
+}
+
+// wire up debug buttons
+for (let i = 0; i < N; i++) {
+  const btn = $(`dbgBtn${i}`);
+  if (btn) btn.addEventListener('click', () => setActiveViewer(i));
+}
+
+// ── Roll camera around its viewing axis ──────────────────────────────────────
+function rollCamera(camera, ctrl, angleRad) {
+  if (!camera || !ctrl) return;
+  const fwd = new THREE.Vector3()
+    .subVectors(ctrl.target, camera.position)
+    .normalize();
+  const q = new THREE.Quaternion().setFromAxisAngle(fwd, angleRad);
+  camera.up.applyQuaternion(q).normalize();
+  ctrl.update();
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  // ` toggles debug mode (always active regardless of scene)
+  if (e.key === '`') { debugMode = !debugMode; updateDebugPanel(); return; }
+
+  if (!dataset) return;
+
+  // 1/2/3 select active viewer (debug mode only)
+  if (debugMode && ['1','2','3'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+    setActiveViewer(parseInt(e.key) - 1); return;
+  }
+
+  // Q / E : roll active viewer around the viewing axis
+  if (e.key.toLowerCase() === 'q' && !e.ctrlKey && !e.metaKey) {
+    rollCamera(cameras[activeViewer], ctrls[activeViewer], THREE.MathUtils.degToRad(3));
+    return;
+  }
+  if (e.key.toLowerCase() === 'e' && !e.ctrlKey && !e.metaKey) {
+    rollCamera(cameras[activeViewer], ctrls[activeViewer], THREE.MathUtils.degToRad(-3));
+    return;
+  }
+  if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey) {
+    frusSizes[activeViewer] = Math.min(frusSizes[activeViewer] * 1.3, 4.0);
+    buildFrustums(activeViewer);
+    showToast(`[${COMP_METHODS[activeViewer]}] Frustum: ${frusSizes[activeViewer].toFixed(2)}`);
+    return;
+  }
+  if ((e.key === '-' || e.key === '_') && !e.ctrlKey && !e.metaKey) {
+    frusSizes[activeViewer] = Math.max(frusSizes[activeViewer] / 1.3, 0.02);
+    buildFrustums(activeViewer);
+    showToast(`[${COMP_METHODS[activeViewer]}] Frustum: ${frusSizes[activeViewer].toFixed(2)}`);
+    return;
+  }
+
+  // S / Shift+S : save or reset the active viewer's params
+  if (e.key.toLowerCase() !== 's' || e.ctrlKey || e.metaKey) return;
+  e.preventDefault();
+  const i = activeViewer;
+  if (e.shiftKey) {
+    try { localStorage.removeItem(lsKey(dataset, COMP_METHODS[i])); } catch {}
+    frusSizes[i] = metas[i]?.frustum_size ?? 0.4;
+    buildFrustums(i);
+    applyCamera(i, metas[i]?.initial_camera ?? null);
+    showToast(`↺ Reset [${COMP_METHODS[i]}]`);
+  } else {
+    if (!cameras[i] || !ctrls[i]) return;
+    const pos = cameras[i].position, tgt = ctrls[i].target, up = cameras[i].up;
+    const dx = tgt.x-pos.x, dy = tgt.y-pos.y, dz = tgt.z-pos.z, dist = Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+    const ic = { position:[pos.x,pos.y,pos.z], forward:[dx/dist,dy/dist,dz/dist],
+                 up:[up.x,up.y,up.z], look_dist:dist, frustum_size:frusSizes[i] };
+    try { localStorage.setItem(lsKey(dataset, COMP_METHODS[i]), JSON.stringify(ic)); } catch {}
+    showToast(`📌 Saved [${COMP_METHODS[i]}] "${dataset}"`);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// Interactive Examples  (single viewer, data from assets/3dmodels/)
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Config: fill with dataset names from assets/3dmodels/ ────────────────────
+const EXAMPLES_ROOT = 'assets/3dmodels/';
+const EXAMPLES_LIST = [
+  // 'nuscenes1',
+  // 'waymo1',
+
+  'openscene3',
+  'pandaset3',
+  'waymo1',
+  'waymo4',
+  'nuscenes3',
+  'argoverse2',
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let exRenderer = null, exScene = null, exCamera = null, exCtrl = null;
+let exCloud = null, exFrusGrp = null, exAnimId = null;
+let exFrusSize = 0.4, exDataset = null, exMeta = null;
+let exSectionVis = false, compSectionVis = false;
+
+const exLsKey = ds => `rigrecon_ex_cam_${ds}`;
+
+// ── Scene grid ────────────────────────────────────────────────────────────────
+function buildExGrid() {
+  const grid = $('exSceneGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  if (!EXAMPLES_LIST.length) {
+    grid.innerHTML = '<p style="color:var(--c-text-3);font-size:13px;grid-column:1/-1;text-align:center;padding:20px">Add dataset names to EXAMPLES_LIST in index.html.</p>';
+    return;
+  }
+
+  EXAMPLES_LIST.forEach((ds, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'comp-scene-item';
+
+    const img = document.createElement('img');
+    img.className = 'comp-scene-thumb';
+    img.src = EXAMPLES_ROOT + ds + '/thumbnail.jpg';
+    img.alt = ds;
+    img.loading = 'lazy';
+    img.onerror = () => img.replaceWith(
+      Object.assign(document.createElement('div'), {
+        className: 'comp-scene-ph',
+        innerHTML: '<i class="fas fa-layer-group"></i>',
+      })
+    );
+
+    const lbl = document.createElement('div');
+    lbl.className = 'comp-scene-label';
+    lbl.textContent = `Scene ${i + 1}`;
+
+    wrap.append(img, lbl);
+    wrap.addEventListener('click', () => selectExScene(ds, wrap));
+    grid.appendChild(wrap);
+  });
+
+  if (EXAMPLES_LIST.length) selectExScene(EXAMPLES_LIST[0], grid.querySelector('.comp-scene-item'));
+}
+
+// ── Scene selection ───────────────────────────────────────────────────────────
+async function selectExScene(ds, itemEl) {
+  if (ds === exDataset) return;
+  exDataset = ds;
+
+  document.querySelectorAll('#exSceneGrid .comp-scene-item').forEach(e => e.classList.remove('active'));
+  itemEl?.classList.add('active');
+
+  const v = $('exViewer'), h = $('exHint'), k = $('exKeyHint');
+  if (v) v.style.display = '';
+  if (h) h.style.display = 'none';
+  if (k) k.style.display = '';
+
+  const l = $('exLoading');
+  if (l) { l.innerHTML = '<div class="spinner"></div><span>Loading…</span>'; l.style.display = ''; }
+
+  disposeEx();
+  await loadThreeJS();
+
+  try {
+    const r = await fetch(EXAMPLES_ROOT + ds + '/meta.json');
+    exMeta = r.ok ? await r.json() : null;
+  } catch { exMeta = null; }
+
+  exFrusSize = (() => {
+    try {
+      const s = localStorage.getItem(exLsKey(ds));
+      if (s) {
+        const obj = JSON.parse(s);
+        if (typeof obj.frustum_size === 'number') return obj.frustum_size;
+      }
+    } catch {}
+    return exMeta?.frustum_size ?? 0.4;
+  })();
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const canvas = $('exCanvas');
+    if (!canvas) return;
+    initExViewer(canvas);
+    startExLoop();
+    loadExPLY(EXAMPLES_ROOT + ds + '/pointcloud.ply');
+  }));
+}
+
+// ── Viewer ────────────────────────────────────────────────────────────────────
+function initExViewer(canvas) {
+  const wrap = canvas.parentElement;
+  const w = wrap.clientWidth || 800, h = wrap.clientHeight || 480;
+
+  exRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  exRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  exRenderer.setSize(w, h, false);
+  exRenderer.setClearColor(0xffffff);
+
+  exScene  = new THREE.Scene();
+  exCamera = new THREE.PerspectiveCamera(55, w / h, 0.001, 2000);
+  exCamera.position.set(0, 2.5, 6);
+
+  exCtrl = new OrbitControls(exCamera, canvas);
+  exCtrl.enableDamping     = true;
+  exCtrl.dampingFactor     = 0.06;
+  exCtrl.rotateSpeed       = -1;
+  exCtrl.screenSpacePanning = true;
+  exCtrl.minDistance = 0.05;
+  exCtrl.maxDistance = 500;
+}
+
+function startExLoop() {
+  cancelAnimationFrame(exAnimId);
+  exAnimId = null;
+  if (!exSectionVis) return;
+  (function loop() {
+    exAnimId = requestAnimationFrame(loop);
+    exCtrl?.update();
+    if (exRenderer && exScene && exCamera) exRenderer.render(exScene, exCamera);
+  })();
+}
+
+// ── PLY loading ───────────────────────────────────────────────────────────────
+function loadExPLY(url) {
+  new PLYLoader().load(url, geometry => {
+    geometry.computeBoundingBox();
+
+    const centre = new THREE.Vector3();
+    geometry.boundingBox.getCenter(centre);
+    geometry.translate(-centre.x, -centre.y, -centre.z);
+    geometry.computeBoundingBox();
+
+    const sz = new THREE.Vector3();
+    geometry.boundingBox.getSize(sz);
+    const sc = 8.0 / (Math.max(sz.x, sz.y, sz.z) || 1);
+
+    let material;
+    if (geometry.hasAttribute('color')) {
+      material = new THREE.PointsMaterial({ size: 0.018, vertexColors: true, sizeAttenuation: true });
+    } else {
+      const pos = geometry.attributes.position.array, n = pos.length / 3;
+      const cols = new Float32Array(n * 3);
+      const bb = geometry.boundingBox, zr = bb.max.z - bb.min.z || 1;
+      for (let k = 0; k < n; k++) {
+        const c = new THREE.Color().setHSL(0.65 - (pos[k*3+2] - bb.min.z) / zr * 0.5, 0.9, 0.45);
+        cols[k*3] = c.r; cols[k*3+1] = c.g; cols[k*3+2] = c.b;
+      }
+      geometry.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+      material = new THREE.PointsMaterial({ size: 0.018, vertexColors: true, sizeAttenuation: true });
+    }
+
+    const pts = new THREE.Points(geometry, material);
+    pts.scale.setScalar(sc);
+
+    if (exCloud) { exScene?.remove(exCloud); exCloud.geometry.dispose(); exCloud.material.dispose(); }
+    exCloud = pts;
+    exScene?.add(pts);
+
+    // Adjust initial_camera: gallery meta uses bounding-box centering, so
+    // we apply the same (camera stored already in normalised space)
+    const savedRaw = (() => { try { return JSON.parse(localStorage.getItem(exLsKey(exDataset))); } catch { return null; } })();
+    const ic = savedRaw ?? exMeta?.initial_camera;
+    if (ic && exCamera && exCtrl) {
+      const [px, py, pz] = ic.position, [fx, fy, fz] = ic.forward, [ux, uy, uz] = ic.up, d = ic.look_dist;
+      exCamera.position.set(px, py, pz);
+      exCamera.up.set(ux, uy, uz);
+      exCamera.lookAt(px+fx*d, py+fy*d, pz+fz*d);
+      exCtrl.target.set(px+fx*d, py+fy*d, pz+fz*d);
+      exCtrl.object.up.set(ux, uy, uz);
+      exCtrl.update();
+    } else {
+      exCamera?.position.set(0, 3.2, 8);
+      exCamera?.lookAt(0, 0, 0);
+      exCtrl?.target.set(0, 0, 0);
+      exCtrl?.update();
+    }
+
+    buildExFrustums();
+
+    const l = $('exLoading');
+    if (l) l.style.display = 'none';
+
+  }, undefined, () => {
+    const l = $('exLoading');
+    if (l) l.innerHTML = '<span style="font-size:12px;color:var(--c-text-3)">No data available</span>';
+  });
+}
+
+// ── Frustums ──────────────────────────────────────────────────────────────────
+function buildExFrustums() {
+  if (exFrusGrp) { exFrusGrp.traverse(o=>{o.geometry?.dispose();o.material?.dispose();}); exScene?.remove(exFrusGrp); exFrusGrp=null; }
+  if (!exMeta?.cam_c2ws || !exScene) return;
+  const F = exMeta.cam_c2ws.length; if (!F) return;
+  const colA = new THREE.Color(0x6eb7fc);
+  const colB = new THREE.Color(0xff7ec1);
+  const vw = exRenderer?.domElement.clientWidth || 800, vh = exRenderer?.domElement.clientHeight || 480;
+  const grp = new THREE.Group();
+  for (let f = 0; f < F; f++) {
+    const color = colA.clone().lerp(colB, F > 1 ? f/(F-1) : 0);
+    const pos = []; const P = exMeta.cam_c2ws[f].length;
+    for (let p = 0; p < P; p++) {
+      const [fx, fy, cx, cy] = exMeta.cam_intrinsics[p];
+      pos.push(...frustumSegs(exMeta.cam_c2ws[f][p], fx, fy, cx, cy, exFrusSize));
+    }
+    const geo = new LineSegmentsGeometry(); geo.setPositions(pos);
+    grp.add(new LineSegments2(geo, new LineMaterial({ color, linewidth: 2.5, resolution: new THREE.Vector2(vw, vh) })));
+  }
+  exFrusGrp = grp; exScene.add(grp);
+}
+
+// ── Dispose ───────────────────────────────────────────────────────────────────
+function disposeEx() {
+  cancelAnimationFrame(exAnimId); exAnimId = null;
+  exFrusGrp?.traverse(o=>{o.geometry?.dispose();o.material?.dispose();}); exScene?.remove(exFrusGrp); exFrusGrp=null;
+  if (exCloud) { exScene?.remove(exCloud); exCloud.geometry.dispose(); exCloud.material.dispose(); exCloud=null; }
+  exRenderer?.dispose(); exRenderer=null;
+  exScene=null; exCamera=null; exCtrl=null; exMeta=null;
+}
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  if (!exRenderer || !exCamera) return;
+  const w = exRenderer.domElement.parentElement.clientWidth;
+  const h = exRenderer.domElement.parentElement.clientHeight;
+  exRenderer.setSize(w, h, false);
+  exCamera.aspect = w / h; exCamera.updateProjectionMatrix();
+  exFrusGrp?.traverse(o => { if (o.material?.isLineMaterial) o.material.resolution.set(w, h); });
+}, { passive: true });
+
+// ── Keyboard (Q/E roll, +/- frustum, S save — examples takes priority if visible) ─
+window.addEventListener('keydown', e => {
+  if (!exDataset || !exSectionVis) return;
+
+  if (e.key.toLowerCase() === 'q' && !e.ctrlKey && !e.metaKey) {
+    rollCamera(exCamera, exCtrl, THREE.MathUtils.degToRad(3)); return;
+  }
+  if (e.key.toLowerCase() === 'e' && !e.ctrlKey && !e.metaKey) {
+    rollCamera(exCamera, exCtrl, THREE.MathUtils.degToRad(-3)); return;
+  }
+  if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey) {
+    exFrusSize = Math.min(exFrusSize * 1.3, 4.0); buildExFrustums();
+    const t = $('exToast'); if (t) { t.textContent = `Frustum: ${exFrusSize.toFixed(2)}`; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 1800); }
+    return;
+  }
+  if ((e.key === '-' || e.key === '_') && !e.ctrlKey && !e.metaKey) {
+    exFrusSize = Math.max(exFrusSize / 1.3, 0.02); buildExFrustums();
+    const t = $('exToast'); if (t) { t.textContent = `Frustum: ${exFrusSize.toFixed(2)}`; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 1800); }
+    return;
+  }
+  if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    if (e.shiftKey) {
+      try { localStorage.removeItem(exLsKey(exDataset)); } catch {}
+      exFrusSize = exMeta?.frustum_size ?? 0.4; buildExFrustums();
+      if (exMeta?.initial_camera) { const ic = exMeta.initial_camera; const [px,py,pz]=ic.position,[fx,fy,fz]=ic.forward,[ux,uy,uz]=ic.up,d=ic.look_dist; exCamera?.position.set(px,py,pz); exCamera?.up.set(ux,uy,uz); exCamera?.lookAt(px+fx*d,py+fy*d,pz+fz*d); exCtrl?.target.set(px+fx*d,py+fy*d,pz+fz*d); exCtrl?.object.up.set(ux,uy,uz); exCtrl?.update(); }
+      const t=$('exToast'); if(t){t.textContent='↺ Reset';t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800);}
+    } else {
+      if (!exCamera || !exCtrl) return;
+      const pos=exCamera.position,tgt=exCtrl.target,up=exCamera.up;
+      const dx=tgt.x-pos.x,dy=tgt.y-pos.y,dz=tgt.z-pos.z,dist=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+      const ic={position:[pos.x,pos.y,pos.z],forward:[dx/dist,dy/dist,dz/dist],up:[up.x,up.y,up.z],look_dist:dist,frustum_size:exFrusSize};
+      try{localStorage.setItem(exLsKey(exDataset),JSON.stringify(ic));}catch{}
+      const t=$('exToast'); if(t){t.textContent=`📌 Saved — "${exDataset}"`;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800);}
+    }
+  }
+}, { capture: false });
+
+// ════════════════════════════════════════════════════════════════════════════
+// [LOCK-SYNC]  EXPERIMENTAL — synchronise rotation & zoom across all 3 viewers
+//
+// All three methods in one scene share the same normalisation (pcd_center /
+// pcd_scale from 'ours'), so their coordinate spaces are identical and we can
+// copy camera positions directly.
+//
+// HOW TO REMOVE THIS FEATURE ENTIRELY:
+//   1. Delete this whole block (from the first === line to the last === line).
+//   2. Delete the `_lockSyncTick();` call in startLoop (marked [LOCK-SYNC]).
+//   3. Delete the <div id="compLockWrap"> HTML element in the Comparisons section.
+// ════════════════════════════════════════════════════════════════════════════
+
+let   compLocked   = false;
+let   _lsGuard     = false;              // prevents recursive sync
+const _lsPrevPos   = Array(N).fill(null); // camera positions from previous frame
+
+/** Called every animation frame by startLoop. Detects camera change and syncs. */
+function _lockSyncTick() {
+  if (!compLocked || _lsGuard) return;
+
+  // Find first viewer whose camera moved since last frame
+  let srcIdx = -1;
+  for (let i = 0; i < N; i++) {
+    if (!cameras[i] || !_lsPrevPos[i]) continue;
+    if (!cameras[i].position.equals(_lsPrevPos[i])) { srcIdx = i; break; }
+  }
+
+  if (srcIdx !== -1) {
+    _lsGuard = true;
+    const src = cameras[srcIdx], srcCtrl = ctrls[srcIdx];
+    for (let j = 0; j < N; j++) {
+      if (j === srcIdx || !cameras[j] || !ctrls[j]) continue;
+      cameras[j].position.copy(src.position);
+      cameras[j].quaternion.copy(src.quaternion);
+      cameras[j].up.copy(src.up);
+      ctrls[j].target.copy(srcCtrl.target);
+      // Don't call ctrls[j].update() — OrbitControls will pick it up next frame
+    }
+    _lsGuard = false;
+  }
+
+  // Snapshot current positions for next frame
+  for (let i = 0; i < N; i++)
+    _lsPrevPos[i] = cameras[i] ? cameras[i].position.clone() : null;
+}
+
+/** Toggle sync lock on/off. */
+function compToggleLock() {
+  compLocked = !compLocked;
+  const btn = document.getElementById('compLockBtn');
+  if (btn) {
+    btn.textContent = compLocked ? '🔒 Sync: ON' : '🔓 Sync: OFF';
+    btn.classList.toggle('active', compLocked);
+  }
+  // Reset prev-pos snapshot so the next tick starts fresh
+  for (let i = 0; i < N; i++) _lsPrevPos[i] = null;
+}
+
+// Wire up button (onclick attr doesn't work in module scope)
+document.getElementById('compLockBtn')?.addEventListener('click', compToggleLock);
+
+// Show the lock button once a comparison scene is loaded
+// (hook into the existing selectScene flow via MutationObserver on compViewers)
+new MutationObserver(() => {
+  const wrap = document.getElementById('compLockWrap');
+  const viewers = document.getElementById('compViewers');
+  if (wrap && viewers) wrap.style.display = viewers.style.display === 'none' ? 'none' : '';
+}).observe(document.getElementById('compViewers') || document.body,
+  { attributes: true, attributeFilter: ['style'] });
+
+// ════════════════════════════════════════════════════════════════════════════
+// [LOCK-SYNC]  END
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Examples section: pause/resume loop based on visibility
+const _exSection = document.getElementById('examples');
+if (_exSection) {
+  new IntersectionObserver(entries => {
+    exSectionVis = entries[0].isIntersecting;
+    if (exSectionVis) {
+      if (exAnimId === null && exDataset) startExLoop();
+    } else {
+      cancelAnimationFrame(exAnimId); exAnimId = null;
+    }
+  }, { threshold: 0 }).observe(_exSection);
+}
+
+// Comparisons section: pause/resume loop based on visibility
+const _compSection = document.getElementById('comparisons');
+if (_compSection) {
+  new IntersectionObserver(entries => {
+    compSectionVis = entries[0].isIntersecting;
+    if (compSectionVis) {
+      if (animId === null && dataset) startLoop();
+    } else {
+      cancelAnimationFrame(animId); animId = null;
+    }
+  }, { threshold: 0 }).observe(_compSection);
+}
+
+buildExGrid();
+(async () => { buildGrid(await loadIndex()); })();
+</script>
+
+</body>
+</html>

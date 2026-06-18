@@ -1,0 +1,33 @@
+{
+  "scenes": [
+    "nuscenes1",
+    "nuscenes2",
+    "nuscenes3",
+    "argoverse1",
+    "argoverse2",
+    "argoverse3",
+    "argoverse4",
+    "argoverse5",
+    "argoverse6",
+    "ddad1",
+    "ddad2",
+    "kitti1",
+    "kitti2",
+    "kitti3",
+    "openscene1",
+    "openscene2",
+    "openscene3",
+    "openscene4",
+    "openscene5",
+    "pandaset1",
+    "pandaset2",
+    "pandaset3",
+    "pandaset4",
+    "waymo1",
+    "waymo2",
+    "waymo3",
+    "waymo4",
+    "waymo5",
+    "waymo6"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "scenes": [
+    "kitti3",
+    "argoverse6",
+    "waymo5",
+    "waymo6",
+    "ddad1",
+    "ddad2"
+  ]
+}

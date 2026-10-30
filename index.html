@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="RigRecon: Efficient Rig-Aware Street Reconstruction via Dual-Path Spatio-Temporal Interaction">
-  <title>RigRecon</title>
+  <meta name="description" content="RigRecon: Memory-Efficient Rig-Aware Reconstruction via Dual-Path Spatio-Temporal Interaction">
+  <title>RigRecon: Memory-Efficient Rig-Aware Reconstruction via Dual-Path Spatio-Temporal Interaction</title>
 
   <!-- Three.js ES-module importmap (must precede any type="module" script) -->
   <script type="importmap">
@@ -105,13 +105,14 @@
     .banner-inner { max-width: 960px; margin: 0 auto; }
 
     .banner-title {
-      /* sized so the first half-line fits within 960 px container */
-      font-size: clamp(1.7rem, 3.2vw, 2.2rem);
+      /* sized so the title settles on two balanced lines within 960 px */
+      font-size: clamp(1.55rem, 2.95vw, 2.0rem);
       font-weight: 800;
       color: var(--c-text);
-      line-height: 1.68;
-      margin-bottom: 28px;
+      line-height: 1.5;
+      margin-bottom: 30px;
       letter-spacing: -0.015em;
+      text-wrap: balance;   /* even line lengths; ignored by older browsers */
     }
 
     /* gradient blue on "RigRecon", no underline */
@@ -122,8 +123,71 @@
       background-clip: text;
     }
 
-    .banner-authors  { font-size: 16px; color: var(--c-text-2); margin-bottom: 6px; }
-    .banner-affiliation { font-size: 14px; color: var(--c-text-3); margin-bottom: 40px; }
+    .banner-authors {
+      font-size: 16px;
+      color: var(--c-text-2);
+      margin-bottom: 10px;
+      line-height: 2.1;
+    }
+
+    /* superscript affiliation markers (1–5 · * †) */
+    .banner-authors sup,
+    .banner-affiliation sup {
+      font-size: 0.68em;
+      color: var(--c-title);
+      font-weight: 600;
+      margin-left: 1px;
+    }
+    .banner-affiliation sup { color: var(--c-text-3); }
+
+    /* author name → personal homepage (href is left as "#" placeholder) */
+    .author-link {
+      color: var(--c-text);
+      font-weight: 600;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      text-underline-offset: 3px;
+      transition: color 0.2s, text-decoration-color 0.2s;
+    }
+
+    .author-link:hover {
+      color: var(--c-title);
+      text-decoration-color: var(--c-accent);
+    }
+
+    .banner-affiliation {
+      font-size: 14px;
+      color: var(--c-text-3);
+      margin-bottom: 14px;
+      line-height: 1.9;
+    }
+
+    /* * Project leader  † Corresponding author */
+    .banner-notes {
+      font-size: 13px;
+      color: var(--c-text-3);
+      margin-bottom: 22px;
+    }
+
+    .banner-notes sup {
+      color: var(--c-text-2);
+      font-weight: 600;
+      margin-right: 2px;
+    }
+
+    /* NeurIPS 2026 venue badge */
+    .banner-venue {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--c-title);
+      background: var(--c-tint);
+      border: 1px solid rgba(119,196,255,0.45);
+      border-radius: 999px;
+      padding: 4px 16px;
+      margin-bottom: 26px;
+    }
 
     .banner-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
@@ -364,6 +428,9 @@
       .banner { padding: 64px 16px 52px; }
       .section { padding: 52px 16px; }
       .banner-title { font-size: 1.45rem; }
+      .banner-authors { font-size: 14px; line-height: 2; }
+      .banner-affiliation { font-size: 12.5px; }
+      .banner-notes { font-size: 12px; }
     }
 
     /* ── Interactive Examples section ── */
@@ -612,18 +679,50 @@
 <section class="banner">
   <div class="banner-inner">
     <h1 class="banner-title">
-      <span class="highlight">RigRecon</span>: Efficient Rig-Aware Street Reconstruction<br>
+      <span class="highlight">RigRecon</span>: Memory-Efficient Rig-Aware Reconstruction
       via Dual-Path Spatio-Temporal Interaction
     </h1>
-    <p class="banner-authors">Anonymous Authors</p>
-    <p class="banner-affiliation">Anonymous Affiliation</p>
+
+    <!-- ── Authors & Affiliations (camera-ready, NeurIPS 2026) ──────────────
+         To link an author to their homepage, replace the href="#" of that
+         author's <a class="author-link"> with their URL.
+         Superscript numbers map to the affiliation list below.
+    ──────────────────────────────────────────────────────────────────── -->
+    <p class="banner-authors">
+      <a class="author-link" href="https://scholar.google.com/citations?user=A-jBVHwAAAAJ">Jiaming Guo</a><sup>1,2</sup>,
+      <a class="author-link" href="https://luohongcheng.github.io/">Hongcheng Luo</a><sup>3,5,*</sup>,
+      <a class="author-link" href="https://scholar.google.com/citations?user=p1tCuLAAAAAJ&hl=zh-CN&oi=ao">Cheng Chi</a><sup>3,5</sup>,
+      <a class="author-link" href="#">Lijun Zhou</a><sup>3,5</sup>,
+      <a class="author-link" href="#">Bing Wang</a><sup>3,5</sup>,
+      <a class="author-link" href="#">Guang Chen</a><sup>3,5</sup><br>
+      <a class="author-link" href="#">Hangjun Ye</a><sup>3,5</sup>,
+      <a class="author-link" href="#">Jiaqi Yang</a><sup>4</sup>,
+      <a class="author-link" href="https://xzhou.me/">Xiaowei Zhou</a><sup>1</sup>,
+      <a class="author-link" href="https://haiyangs.cn/">Haiyang Sun</a><sup>3,5</sup>,
+      <a class="author-link" href="https://pengsida.net/">Sida Peng</a><sup>1,†</sup>
+    </p>
+
+    <p class="banner-affiliation">
+      <sup>1</sup>Zhejiang University &nbsp;·&nbsp;
+      <sup>2</sup>Xiangjiang Lab &nbsp;·&nbsp;
+      <sup>3</sup>Xiaomi EV &nbsp;·&nbsp;
+      <sup>4</sup>Northwestern Polytechnical University<br>
+      <sup>5</sup>Beijing Key Laboratory of Intelligent Driving Foundation Models and Simulation
+    </p>
+
+    <p class="banner-notes">
+      <sup>*</sup>Project leader. &nbsp;&nbsp; <sup>†</sup>Corresponding author.
+    </p>
+
+    <p class="banner-venue">NeurIPS 2026</p>
+
     <div class="banner-links">
       <span class="btn-link muted">
         <i class="fas fa-graduation-cap"></i> arXiv
       </span>
-      <span class="btn-link muted">
+      <a href="https://github.com/zju3dv/RigRecon" class="btn-link primary" target="_blank" rel="noopener">
         <i class="fab fa-github"></i> Code
-      </span>
+      </a>
       <a href="gallery.html" class="btn-link primary">
         <i class="fas fa-images"></i> Gallery
       </a>
@@ -661,7 +760,7 @@
     </p>
     <!-- overview figure sits at the bottom of the card -->
     <img
-      src="assets/pipeline.png"
+      src="assets/pipelinefig_new.png"
       alt="RigRecon: Overview of the framework"
       class="paper-fig"
       style="margin-top: 36px;"
@@ -669,7 +768,7 @@
     >
     <div id="figPlaceholder" class="fig-placeholder" style="display:none; margin-top:36px;">
       <i class="fas fa-image"></i>
-      <span>pipeline.png</span>
+      <span>pipelinefig_new.png</span>
     </div>
     <!-- <p class="fig-caption">
       <strong>Figure 1.</strong> Overview of RigRecon. Our framework achieves consistent-scale
@@ -806,13 +905,6 @@ function fallbackCopy(text, cb) {
   document.body.removeChild(ta);
 }
 </script>
-
-<!-- Footer -->
-<footer>
-  <p>
-    © 2026 RigRecon.
-  </p>
-</footer>
 
 <script type="module">
 // ── Three.js is lazy-loaded on first scene selection to avoid blocking page load ──
